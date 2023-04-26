@@ -164,7 +164,7 @@ venv.bak/
 
 # This repository
 geo/
-pickles/
+#pickles/
 invenio.py
 *.log
 *.bak

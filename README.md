@@ -10,7 +10,7 @@ You may find many mysterious keywords in EXFOR entries such as:
 > REACTION   (2-HE-4(N,2N)2-HE-3,,SIG,,SPA)\
 > STATUS     (DEP,14737002)\
 
-These keywords are defined in the EXFOR dictionary which is maintained in the IAEA Nuclear Data Section. This repository provides the JSON-converted-EXFOR-dictionary file. [Latest file](https://github.com/shinokumura/exfor_dictionary/blob/main/json/trans.9126.json)
+These keywords are defined in the EXFOR dictionary which is maintained in the IAEA Nuclear Data Section. This repository provides the JSON-converted-EXFOR-dictionary file. [Latest file](json/trans.9127.json)
 
 
 

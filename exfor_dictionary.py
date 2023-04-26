@@ -19,19 +19,37 @@ import os
 import json
 import pandas as pd
 
-from config import DICTIONARY_PATH, DICTIONARY_URL
-from abbreviations import abbreviations
 
+# from config import DICTIONARY_PATH, DICTIONARY_URL, LATEST_TRANS, PICKLE_PATH
+
+try:
+    from config import DICTIONARY_PATH, DICTIONARY_URL, LATEST_TRANS, PICKLE_PATH
+
+except:
+    import sys
+
+    sys.path.append("../exfor_dictionary/")
+    from exfor_dictionary.config import DICTIONARY_PATH, DICTIONARY_URL, LATEST_TRANS, PICKLE_PATH
+
+
+# from .abbreviations import convert_abbreviations
+try:
+    from .abbreviations import convert_abbreviations
+
+except:
+    from abbreviations import convert_abbreviations
 
 
 def get_local_trans_nums():
-    local_dict_files = glob.glob(os.path.join(DICTIONARY_PATH, "trans_backup", "trans.*"))
+    local_dict_files = glob.glob(
+        os.path.join(DICTIONARY_PATH, "trans_backup", "trans.*")
+    )
     x = []
     for d in local_dict_files:
         x += [re.split(r"\.", os.path.basename(d))[1]]
+    # remove obstruction
+    # x.remove("9927")
     return x
-
-
 
 
 def get_server_trans_nums():
@@ -41,15 +59,12 @@ def get_server_trans_nums():
     links = soup.find_all("a", attrs={"href": re.compile(r".*trans.*")})
     for link in links:
         x += [link.get("href").split(".")[-1]]
+    x.remove("9927")
     return x
-
-
 
 
 def get_latest_trans_num(x):
     return max(x)
-
-
 
 
 def download_trans(transnum):
@@ -65,14 +80,10 @@ def download_trans(transnum):
         open(file, "wb").write(r.content)
 
 
-
-
 def download_all_trans():
     x = get_server_trans_nums()
     for xx in x:
         download_trans(xx)
-
-
 
 
 def download_latest_dict():
@@ -94,24 +105,20 @@ def download_latest_dict():
         return remote_max
 
 
-
-
 def dict_filename(latest):
     return os.path.join(DICTIONARY_PATH, "trans_backup", "trans." + str(latest))
 
 
-
-
 def diction_json_file(diction_num: str):
     # if diction_num == "950":
-    return os.path.join(DICTIONARY_PATH, "json", "dictions", "Diction-" + str(diction_num) + ".json")
+    return os.path.join(
+        DICTIONARY_PATH, "json", "dictions", "Diction-" + str(diction_num) + ".json"
+    )
     # else:
     #     j = open("./exfor_dictionary/json/dictions/Diction-950.json")
     #     dictions = json.load(j)
     #     desc = dictions[diction_num]["description"]
     #     return os.path.join(DICTIONARY_PATH, "json", "dictions", "Diction-" + str(diction_num) + "-" + desc + ".json")
-
-
 
 
 def write_diction_json(diction_num: str, diction_dict):
@@ -120,14 +127,10 @@ def write_diction_json(diction_num: str, diction_dict):
         json.dump(diction_dict, json_file, indent=2)
 
 
-
-
 def write_trans_json_file(trans_num: str, exfor_dictionary):
     file = os.path.join(DICTIONARY_PATH, "json", "trans." + str(trans_num) + ".json")
     with open(file, "w") as json_file:
         json.dump(exfor_dictionary, json_file, indent=2)
-
-
 
 
 def get_diction_difinition(latest) -> dict:
@@ -153,7 +156,6 @@ def get_diction_difinition(latest) -> dict:
             break
 
         elif diction_950:
-
             x4code = str(line[:11].rstrip().lstrip())
             desc = line[11:66].rstrip()
             flag = line[79:80]
@@ -168,10 +170,7 @@ def get_diction_difinition(latest) -> dict:
     return dict
 
 
-
-
 def parse_dictionary(latest):
-
     file = dict_filename(latest)
 
     with open(file) as f:
@@ -184,7 +183,9 @@ def parse_dictionary(latest):
                 new = True
                 diction_num = re.split("\s{2,}", line)[1]
                 fname = os.path.join(
-                    DICTIONARY_PATH, "trans_backup/dictions", "diction" + str(diction_num) + ".dat"
+                    DICTIONARY_PATH,
+                    "trans_backup/dictions",
+                    "diction" + str(diction_num) + ".dat",
                 )
                 o = open(fname, "w")
                 o.write(line)
@@ -200,8 +201,6 @@ def parse_dictionary(latest):
                 diction += [line]
 
 
-
-
 def skip_unused_lines(d):
     if "==" in d:
         return True
@@ -211,24 +210,20 @@ def skip_unused_lines(d):
         return False
 
 
-
-
-
 def conv_dictionary_to_json(latest) -> dict:
     ## load pickles for additional info
-    '''
+    """
     Note: these pickle are included in the main EXFOR parser reporsitory
-    '''
+    """
 
-    institute_df = pd.read_pickle("pickles/institute.pickle")
+    institute_df = pd.read_pickle(os.path.join(PICKLE_PATH, "institute.pickle"))
     institute_df["code"] = institute_df["code"].str.rstrip()
     institute_df = institute_df.set_index("code")
     institute_dict = institute_df.to_dict(orient="index")
 
-    country_df = pd.read_pickle("geo/country.pickle")
+    country_df = pd.read_pickle(os.path.join(PICKLE_PATH, "country.pickle"))
     country_df = country_df.set_index("country_code")
     country_dict = country_df.to_dict(orient="index")
-
 
     ## Get definitions of each DICTION from DICTION 950
     dictions = get_diction_difinition(latest)
@@ -238,10 +233,11 @@ def conv_dictionary_to_json(latest) -> dict:
     exfor_dictionary["definitions"] = dictions
     exfor_dictionary["dictionaries"] = {}
 
-
     for diction_num in dictions:
         fname = os.path.join(
-            DICTIONARY_PATH, "trans_backup/dictions", "diction" + str(diction_num) + ".dat"
+            DICTIONARY_PATH,
+            "trans_backup/dictions",
+            "diction" + str(diction_num) + ".dat",
         )
 
         with open(fname) as f:
@@ -249,7 +245,7 @@ def conv_dictionary_to_json(latest) -> dict:
 
         diction_dict = {}
         codes = {}
-        
+
         if int(diction_num) in [
             209,
             207,
@@ -280,13 +276,12 @@ def conv_dictionary_to_json(latest) -> dict:
                     x4code = d[:11].rstrip()
                     regex = r"\((.*)\)"
                     desc = re.match(regex, d[11:66]).group(1)
-                    desc = abbreviations(institute_abbr, desc)
+                    desc = convert_abbreviations(institute_abbr, desc)
                     flag = d[79:80]
 
                     if int(diction_num) == 3:
                         ### for DICTION 3: Institute
                         if not x4code[1:4].rstrip() == x4code[4:7]:
-
                             if institute_dict.get(x4code):
                                 addr = institute_dict[x4code]["formatted_address"]
                                 lat = institute_dict[x4code]["lat"]
@@ -314,7 +309,6 @@ def conv_dictionary_to_json(latest) -> dict:
                         journal_contry = d[62:66]
 
                         if country_dict.get(journal_contry):
-
                             codes[x4code] = {
                                 "description": desc,
                                 "pulished_country_code": journal_contry,
@@ -375,12 +369,14 @@ def conv_dictionary_to_json(latest) -> dict:
                         additional_code = "DATA"
                     elif x4code.startswith("DATA") and "ERR" in x4code:
                         additional_code = "DATA_E"
+                    elif x4code == "ERR-T":
+                        additional_code = "DATA_E"
 
                 elif d.startswith(" " * 11):
                     continue
 
                 if x4code:
-                    desc = abbreviations(head_unit_abbr, "".join(desc))
+                    desc = convert_abbreviations(head_unit_abbr, "".join(desc))
                     codes[x4code] = {
                         "description": desc,
                         "additional_code": additional_code,
@@ -404,7 +400,7 @@ def conv_dictionary_to_json(latest) -> dict:
                     continue
 
                 if x4code:
-                    desc = abbreviations(head_unit_abbr, "".join(desc))
+                    desc = convert_abbreviations(head_unit_abbr, "".join(desc))
                     codes[x4code] = {
                         "description": desc,
                         "additional_code": additional_code,
@@ -429,7 +425,7 @@ def conv_dictionary_to_json(latest) -> dict:
                     continue
 
                 if x4code:
-                    desc = abbreviations(head_unit_abbr, "".join(desc))
+                    desc = convert_abbreviations(head_unit_abbr, "".join(desc))
                     codes[x4code] = {
                         "description": desc,
                         "active": False if flag == "O" else True,
@@ -454,7 +450,7 @@ def conv_dictionary_to_json(latest) -> dict:
                     continue
 
                 if x4code:
-                    desc = abbreviations(head_unit_abbr, "".join(desc))
+                    desc = convert_abbreviations(head_unit_abbr, "".join(desc))
                     codes[x4code] = {
                         "description": desc,
                         "additional_code": additional_code,
@@ -471,24 +467,24 @@ def conv_dictionary_to_json(latest) -> dict:
             multiline of description are not implemented yet.
 
             # Case 1
-            ,POL/DA,,VAP      NO  (Vector analyzing power, iT(11))            3000023601237 
+            ,POL/DA,,VAP      NO  (Vector analyzing power, iT(11))            3000023601237
             # Case 2
-            ,POL/DA/DA,*/*,ANANO  (Analyzing power d2/dA(*)/dA(*))            3000023601238 
+            ,POL/DA/DA,*/*,ANANO  (Analyzing power d2/dA(*)/dA(*))            3000023601238
             # Case 3
-            PR,NU/DA/DE,N+*F/NFYAE(Diff.prompt neut.mult.d/dA(n+frag.spec.    3000023600699 
-                                )/dE(n))                                    3000023600700 
-                                (Differential prompt neutron multiplicity   3000023600701 
-                                with respect to angle between neutron and  3000023600702 
-                                fission fragment specified and energy of   3000023600703 
-                                neutron)                                   3000023600704  
+            PR,NU/DA/DE,N+*F/NFYAE(Diff.prompt neut.mult.d/dA(n+frag.spec.    3000023600699
+                                )/dE(n))                                    3000023600700
+                                (Differential prompt neutron multiplicity   3000023600701
+                                with respect to angle between neutron and  3000023600702
+                                fission fragment specified and energy of   3000023600703
+                                neutron)                                   3000023600704
             # Case 4
-            ,POL/DA/DA/DE,*,ANA                                              93000023601239 
-                            NO  (Analyzing power dA1/dA2/dE f.particle      3000023601240 
-                                specified)                                 3000023601241 
+            ,POL/DA/DA/DE,*,ANA                                              93000023601239
+                            NO  (Analyzing power dA1/dA2/dE f.particle      3000023601240
+                                specified)                                 3000023601241
             # Case 5
-            ,POL/DA/DA/DE,*/*/*,ANA                                          93000023601244 
-                            NO  (Analyzing power dA1/dA2/dE1 f.particles    3000023601245 
-                                spec.)                                     3000023601246 
+            ,POL/DA/DA/DE,*/*/*,ANA                                          93000023601244
+                            NO  (Analyzing power dA1/dA2/dE1 f.particles    3000023601245
+                                spec.)                                     3000023601246
             """
 
             from abbreviations import reaction_abbr
@@ -509,7 +505,6 @@ def conv_dictionary_to_json(latest) -> dict:
                     cont = False
                     flag = d[79:80]  # obsolete flag
 
-
                     if not d.startswith(" ") and d[22] == "(":
                         ## Case 1, 2, and 3
                         x4code = d[:18].rstrip()
@@ -523,14 +518,12 @@ def conv_dictionary_to_json(latest) -> dict:
                         ## Case 4, 5
                         additional_code = d[18:22].rstrip()
 
-
                     ## get description
                     if d[22] == "(":
                         desc = d[22:66].rstrip()
                         cont = True
                         if desc[-1].endswith(")"):
                             cont = False
-
 
                 elif d.startswith(" " * 22):
                     desc += d[22:66].rstrip()
@@ -539,14 +532,12 @@ def conv_dictionary_to_json(latest) -> dict:
                     elif desc[-1].endswith(")"):
                         cont = False
 
-
                 else:
                     cont = False
                     desc = []
 
-
                 if not cont and x4code:
-                    desc = abbreviations(reaction_abbr, "".join(desc))
+                    desc = convert_abbreviations(reaction_abbr, "".join(desc))
                     codes[x4code] = {
                         "description": desc,
                         "additional_code": additional_code,
@@ -562,12 +553,12 @@ def conv_dictionary_to_json(latest) -> dict:
             continue
 
         # create dictionary content
-        diction_dict = { diction_num: {
-            "diction_name": dictions[str(diction_num)]["description"],
-            "codes": codes ,
+        diction_dict = {
+            diction_num: {
+                "diction_name": dictions[str(diction_num)]["description"],
+                "codes": codes,
             }
         }
-
 
         if diction_dict:
             # append dictionary content to json/trans.***.json
@@ -577,11 +568,8 @@ def conv_dictionary_to_json(latest) -> dict:
             write_diction_json(diction_num, diction_dict)
 
     write_trans_json_file(latest, exfor_dictionary)
-    
 
     return exfor_dictionary
-
-
 
 
 def update_dictionary_to_latest():
@@ -604,24 +592,26 @@ def update_dictionary_to_latest():
 ###
 ###################################################################
 class Diction:
-    def __init__(self):
-        self.latest_trans = "9126" #get_latest_trans_num(get_local_trans_nums())
-        self.diction_num = None
-    
-
-    def read_diction(self, diction_num):
-        if diction_num:
-            # file = diction_json_file(diction_num)
-            file = os.path.join(DICTIONARY_PATH, "json", "trans." + str(self.latest_trans) + ".json")
-            with open(file) as json_file:
-                return json.load(json_file)["dictionaries"][diction_num]
+    def __init__(self, diction_num=None):
+        self.latest_trans = LATEST_TRANS  # get_latest_trans_num(get_local_trans_nums())
+        self.dictionaries = self.read_latest_dictionary()
+        self.diction_num = diction_num
 
 
+    def read_latest_dictionary(self):
+        file = os.path.join(
+            DICTIONARY_PATH, "json", "trans." + str(self.latest_trans) + ".json"
+        )
+        with open(file) as json_file:
+            return json.load(json_file)["dictionaries"]
+
+    def get_diction(self):
+        return self.dictionaries[self.diction_num]["codes"]
 
 
     def get_incident_en_heads(self):
         ## diction 24: Data heads, get_x
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
@@ -632,10 +622,9 @@ class Diction:
         ]
 
 
-
     def get_incident_en_err_heads(self):
         ## diction 24: Data heads, get_dx
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
@@ -646,10 +635,9 @@ class Diction:
         ]
 
 
-
     def get_data_heads(self):
         ## diction 24: Data heads, for y
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
@@ -660,10 +648,9 @@ class Diction:
         ]
 
 
-
     def get_data_err_heads(self):
         ## diction 24: Data heads, for d_y
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
@@ -674,89 +661,195 @@ class Diction:
         ]
 
 
-
     def get_outgoing_e_heads(self):
-        ## diction 24: Data heads, measured energy
-        diction = self.read_diction("24")
+        ## diction 24: Data heads, measured energy E or E-LVL
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
-            if diction["codes"][h]["additional_code"] == "E" and diction["codes"][h]["active"]
+            if diction["codes"][h]["additional_code"] == "E"
+            and diction["codes"][h]["active"]
+        ]
+
+
+    def get_outgoing_e_err_heads(self):
+        ## diction 24: Data heads, measured energy  E-ERR E-LVL-ERR
+        diction = self.dictionaries["24"]
+        return [
+            h
+            for h in diction["codes"].keys()
+            if diction["codes"][h]["additional_code"] == "F"
+            and diction["codes"][h]["active"]
         ]
 
 
     def get_level_heads(self):
         ## diction 24: Data heads, measured level
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
-            if diction["codes"][h]["additional_code"] == "L" and diction["codes"][h]["active"]
+            if diction["codes"][h]["additional_code"] == "L"
+            and diction["codes"][h]["active"]
         ]
 
 
-
-    def get_level_angle(self):
+    def get_angle_heads(self):
         ## diction 24: Data heads, measured level
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
-            if diction["codes"][h]["additional_code"] == "G" and diction["codes"][h]["active"]
+            if diction["codes"][h]["additional_code"] == "G"
+            and diction["codes"][h]["active"]
         ]
 
+
+    def get_angle_err_heads(self):
+        ## diction 24: Data heads, measured level
+        diction = self.dictionaries["24"]
+        return [
+            h
+            for h in diction["codes"].keys()
+            if diction["codes"][h]["additional_code"] == "H"
+            and diction["codes"][h]["active"]
+        ]
 
 
     def get_mass_heads(self):
         ## diction 24: Data heads, get_x
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
-            if diction["codes"][h]["additional_code"] == "J" and diction["codes"][h]["active"]
+            if diction["codes"][h]["additional_code"] == "J"
+            and diction["codes"][h]["active"]
         ]
-
 
 
     def get_elem_heads(self):
         ## diction 24: Data heads, get_x
-        diction = self.read_diction("24")
+        diction = self.dictionaries["24"]
         return [
             h
             for h in diction["codes"].keys()
-            if diction["codes"][h]["additional_code"] == "I" and diction["codes"][h]["active"]
+            if diction["codes"][h]["additional_code"] == "I"
+            and diction["codes"][h]["active"]
         ]
 
+
+    def get_details(self, diction_num, key):
+        diction = self.dictionaries[diction_num]["codes"]
+
+        if diction.get(key):
+            return diction[key]["description"]
+        else:
+            return None
 
 
     def get_unit_factor(self, datahead):
         ## diction 25: Data units
-        diction = self.read_diction("25")
-        factor = diction["codes"][datahead][
-            "unit_conversion_factor"
-        ]  # if diction[datahead]["active"]
-        if factor == "":
+        diction = self.dictionaries["25"]
+        if " " in datahead:
+            ## ENTRY 40234003 contains "SEE TEXT" in the units
             return 1.0
         else:
-            return factor
+            factor = diction["codes"][datahead][
+                "unit_conversion_factor"
+            ]  # if diction[datahead]["active"]
+            if factor == "":
+                return 1.0
+            else:
+                return factor
 
 
+    def get_standard_unit(self, unit):
+        diction = self.dictionaries["25"]
 
-    def get_details(self, diction_num, key):
-        diction = self.read_diction(diction_num)
-        if diction.get(key):
-            return diction[key]["description"]
+        additional_code = diction["codes"][unit]["additional_code"]
+
+        for unit_code in diction["codes"]:
+            if (
+                additional_code == diction["codes"][unit][additional_code]
+                and diction["codes"][unit]["unit_conversion_factor"] == 1
+            ):
+                standard_unit = unit
+
+        if standard_unit == "":
+            return unit
         else:
-            return key
+            return standard_unit
 
+    def get_institute(self, code):
+        diction = self.dictionaries["3"]
 
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_reftype(self, code):
+        diction = self.dictionaries["4"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_journal(self, code):
+        diction = self.dictionaries["5"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_report(self, code):
+        diction = self.dictionaries["6"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_confproceeding(self, code):
+        diction = self.dictionaries["7"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_method(self, code):
+        diction = self.dictionaries["21"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_detectors(self, code):
+        diction = self.dictionaries["22"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_facility(self, code):
+        diction = self.dictionaries["18"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_err_analysis(self, code):
+        diction = self.dictionaries["24"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
+
+    def get_inc_sources(self, code):
+        diction = self.dictionaries["19"]
+
+        return diction["codes"][code.replace("(", "").replace(")", "").strip()][
+            "description"
+        ]
 
 
 if __name__ == "__main__":
     update_dictionary_to_latest()
-    # conv_dictionary_to_json("9126")
-
-
-
-
-
