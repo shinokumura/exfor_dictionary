@@ -65,15 +65,14 @@ ENDDICTION          40          0
 
 
 ## Use JSON format EXFOR dictionary
-See [.ipynb file](https://github.com/shinokumura/exfor_dictionary/blob/main/example.ipynb) 
+See [.ipynb file](https://github.com/IAEA-NDS/exfor_dictionary/blob/main/example.ipynb) 
 
-If you don't have Jupyter notebook environment, you can run it on Binder from the following button. [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/shinokumura/exfor_dictionary/main?labpath=example.ipynb)
+If you don't have Jupyter notebook environment, you can run it on Binder from the following button. [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/IAEA-NDS/exfor_dictionary/main?labpath=example.ipynb)
 
 ```
 import json
-from exfor_dictionary import *
 # Latest dictionary sequential number
-latest = "9126"
+latest = "9127"
 
 # latest number of dictionary file (see trans_backup/trans.****)
 j = open("json/trans." + latest + ".json")
@@ -100,10 +99,13 @@ The EXFOR dictionary parser, ``exfor_dictionary.py``, will download the latest d
 The EXFOR dictionary is updated irregular basis, so if you need to run the update of EXFOR dictionary to convert new file into JSON format, please run:
 
 ```
-python exfor_dictionary.py
+python convert_dictionary.py
 ```
 
 Parsing all information is not yet perfect. Currently, JSON files are produced for some of ```DICTION``` with information that are used in the EXFOR parser. 
+
+
+
 
 
 ## Contact
